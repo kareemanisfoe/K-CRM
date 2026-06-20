@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor CRM Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+body{font-family:Tahoma, Geneva, sans-serif;background:#f3f4f6;margin:0;padding:20px;transition: background 0.3s, color 0.3s;}
+h1{margin-top:0; font-size: 24px;}
+.card{background:#fff;border-radius:14px;padding:15px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:15px}
+input,select,button{padding:10px;border:1px solid #ddd;border-radius:8px;margin:4px;font-family:Tahoma}
+button{cursor:pointer; background:#eee; border:1px solid #ccc; transition: 0.2s;}
+button:hover{background:#ddd}
+.btn-primary {background:#4f46e5; color:#fff; border:none}
+.btn-primary:hover {background:#4338ca}
+.btn-danger {background:#ef4444; color:#fff; border:none}
+.btn-danger:hover {background:#dc2626}
+.btn-success {background:#10b981; color:#fff; border:none}
+.btn-success:hover {background:#059669}
+.btn-pdf {background:#0284c7; color:#fff; border:none}
+.btn-pdf:hover {background:#0369a1}
+.client {border-right:5px solid #4f46e5}
+.video{background:#f8fafc;padding:12px;border-radius:10px;margin-top:8px;border:1px solid #e2e8f0; position:relative;}
+.small{font-size:12px;color:#666}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:15px}
+.video-item {display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.video-info {flex-grow:1;}
+.completed-text {text-decoration: line-through; color: #a1a1aa;}
+.paid-text {color: #10b981; font-weight: bold;}
+.inline-form {display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; padding:10px; background:#f1f5f9; border-radius:8px;}
+.edit-form {display:flex; flex-direction:column; gap:8px;}
+.price-tag {background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 6px; font-weight: bold; font-size: 13px; margin-right: 5px;}
+
+.dark .price-tag {background: #0c4a6e; color: #38bdf8;}
+
+/* الألوان الذكية للـ Deadlines والـ Waiting */
+.video-waiting { background: #f1f5f9 !important; border-color: #cbd5e1 !important; opacity: 0.85; }
+.deadline-danger { background: #fee2e2 !important; border-color: #fca5a5 !important; }
+.deadline-warning { background: #fef3c7 !important; border-color: #fcd34d !important; }
+
+/* Dark Mode */
+.dark{background:#121212;color:#eee}
+.dark .card{background:#1e1e1e;color:#eee}
+.dark input,.dark select{background:#2a2a2a;color:#fff;border-color:#555}
+.dark .video{background:#2b2b2b; border-color:#444}
+.dark .video-waiting { background: #202020 !important; border-color: #3f3f46 !important; }
+.dark .deadline-danger { background: #451a1a !important; border-color: #7f1d1d !important; }
+.dark .deadline-warning { background: #453b1a !important; border-color: #78350f !important; }
+.dark button {background:#333; color:#fff; border-color:#555}
+.dark button:hover {background:#444}
+.dark .btn-primary {background:#6366f1;}
+.dark .inline-form {background:#252525;}
+</style>
+</head>
+<body>
+
+<div style="display:flex;justify-content:space-between;align-items:center; flex-wrap: wrap; gap: 10px;">
+    <h1>🎬 K-Flow OS</h1>
+    <div>
+        <button onclick="toggleArchiveModal()" class="btn-primary" style="font-size:14px; font-weight: bold;">🗂️ فتح أرشيف الفيديوهات</button>
+        <button onclick="clearAllData()" class="btn-danger" style="font-size:14px; font-weight: bold;">🗑️ تصفير السيستم</button>
+        <button onclick="toggleDarkMode()" style="font-size:14px;">🌙 المظهر (Dark Mode)</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>✨ إضافة عميل جديد</h3>
+    <input id="clientName" placeholder="اسم العميل">
+    <input id="package" placeholder="الباكدج / عدد الفيديوهات">
+    <button class="btn-primary" onclick="addClient()">إضافة عميل</button>
+</div>
+
+<div id="stats" class="card"></div>
+<div id="clients" class="grid"></div>
+
+<div id="archiveModal" class="card" style="display:none; position:fixed; top:10%; left:5%; right:5%; bottom:10%; z-index:1000; overflow-y:auto; border:2px solid #4f46e5; box-shadow:0 10px 25px rgba(0,0,0,0.3); background:#fff;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ccc; padding-bottom:10px;">
+        <h2>📦 أرشيف الفيديوهات المؤرشفة والمنتهية</h2>
+        <button class="btn-danger" onclick="toggleArchiveModal()">إغلاق الأرشيف ✖️</button>
+    </div>
+    <div id="archiveContent" style="margin-top:15px;"></div>
+</div>
+
+<script>
+if(localStorage.getItem("editorcrm_dark")==="true"){
+    document.body.classList.add("dark");
+}
+
+function getData(){
+ return JSON.parse(localStorage.getItem("editorcrm")||"[]");
+}
+
+function save(data){
+ localStorage.setItem("editorcrm",JSON.stringify(data));
+ render();
+}
+
+function toggleDarkMode(){
+ document.body.classList.toggle('dark');
+ localStorage.setItem('editorcrm_dark',document.body.classList.contains('dark'));
+}
+
+function clearAllData() {
+    if(confirm("هل أنت متأكد تماماً من مسح وتصفير جميع بيانات العملاء والفيديوهات بالكامل؟ لا يمكن التراجع عن هذا الإجراء.")) {
+        localStorage.removeItem("editorcrm");
+        localStorage.removeItem("financial_target");
+        render();
+    }
+}
+
+function toggleArchiveModal() {
+    const modal = document.getElementById("archiveModal");
+    modal.style.display = modal.style.display === "none" ? "block" : "none";
+    if(modal.style.display === "block") {
+        modal.style.background = document.body.classList.contains('dark') ? '#1e1e1e' : '#fff';
+        renderArchive();
+    }
+}
+
+function addClient(){
+ const name=document.getElementById("clientName").value;
+ const pack=document.getElementById("package").value;
+ if(!name) return;
+ let data=getData();
+ data.push({
+   id:Date.now(),
+   name:name,
+   package:pack,
+   videos:[],
+   isEditing: false
+ });
+ save(data);
+ document.getElementById("clientName").value="";
+ document.getElementById("package").value="";
+}
+
+function showAddVideoForm(clientId) {
+    const form = document.getElementById(`video-form-${clientId}`);
+    form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+}
+
+function inlineAddVideo(clientId) {
+    const title = document.getElementById(`v-title-${clientId}`).value;
+    const deadline = document.getElementById(`v-deadline-${clientId}`).value;
+    const price = parseFloat(document.getElementById(`v-price-${clientId}`).value) || 0;
+    if(!title) return;
+
+    let data = getData();
+    let c = data.find(x=>x.id===clientId);
+
+    c.videos.push({
+       id:Date.now(),
+       title: title,
+       deadline: deadline,
+       deliveryDate: "", 
+       price: price,
+       status:"Not Started",
+       notes: "",
+       link: "",
+       isArchived: false
+    });
+
+    save(data);
+}
+
+function updateStatus(clientId, videoId, val){
+ let data=getData();
+ let c=data.find(x=>x.id===clientId);
+ let v=c.videos.find(x=>x.id===videoId);
+ v.status=val;
+ 
+ if((val === "Delivered" || val === "Paid") && !v.deliveryDate) {
+     v.deliveryDate = new Date().toISOString().split('T')[0];
+ }
+ save(data);
+}
+
+function updateDeliveryDate(clientId, videoId, dateVal) {
+ let data=getData();
+ let c=data.find(x=>x.id===clientId);
+ let v=c.videos.find(x=>x.id===videoId);
+ v.deliveryDate = dateVal;
+ save(data);
+}
+
+function toggleVideoComplete(clientId, videoId, isChecked) {
+    let data = getData();
+    let c = data.find(x=>x.id===clientId);
+    let v = c.videos.find(x=>x.id===videoId);
+    
+    if (isChecked) {
+        if (v.status !== "Paid") {
+            v.status = "Delivered";
+        }
+        if(!v.deliveryDate) {
+            v.deliveryDate = new Date().toISOString().split('T')[0];
+        }
+    } else {
+        v.status = "Not Started";
+    }
+    save(data);
+}
+
+function saveVideoMeta(clientId, videoId) {
+    let data = getData();
+    let c = data.find(x=>x.id===clientId);
+    let v = c.videos.find(x=>x.id===videoId);
+    v.notes = document.getElementById(`v-notes-${videoId}`).value;
+    v.link = document.getElementById(`v-link-${videoId}`).value;
+    localStorage.setItem("editorcrm",JSON.stringify(data));
+    alert("تم حفظ الملاحظات والروابط بنجاح! 💾");
+}
+
+function archiveVideo(clientId, videoId) {
+    let data = getData();
+    let c = data.find(x=>x.id===clientId);
+    let v = c.videos.find(x=>x.id===videoId);
+    v.isArchived = true;
+    save(data);
+}
+
+function unarchiveVideo(clientId, videoId) {
+    let data = getData();
+    let c = data.find(x=>x.id===clientId);
+    let v = c.videos.find(x=>x.id===videoId);
+    v.isArchived = false;
+    localStorage.setItem("editorcrm",JSON.stringify(data));
+    render();
+    renderArchive();
+}
+
+function deleteVideo(clientId,videoId){
+ if(confirm("حذف الفيديو نهائياً؟")){
+     let data=getData();
+     let c=data.find(x=>x.id===clientId);
+     c.videos=c.videos.filter(v=>v.id!==videoId);
+     save(data);
+     if(document.getElementById("archiveModal").style.display === "block") renderArchive();
+ }
+}
+
+function toggleEditClient(clientId, status) {
+    let data = getData();
+    let c = data.find(x=>x.id===clientId);
+    c.isEditing = status;
+    save(data);
+}
+
+function saveClientEdit(clientId) {
+    let data = getData();
+    let c = data.find(x=>x.id===clientId);
+    const newName = document.getElementById(`edit-name-${clientId}`).value;
+    const newPackage = document.getElementById(`edit-pack-${clientId}`).value;
+    
+    if(!newName) return;
+    c.name = newName;
+    c.package = newPackage;
+    c.isEditing = false;
+    save(data);
+}
+
+function showDeleteConfirm(clientId) {
+    document.getElementById(`actions-${clientId}`).style.display = 'none';
+    document.getElementById(`confirm-delete-${clientId}`).style.display = 'block';
+}
+
+function updateTarget(val) {
+    localStorage.setItem("financial_target", val);
+    render();
+}
+
+// دالة توليد الـ PDF الاحترافية بعد إصلاح مشكلة محاذاة الاسم والتاريخ تماماً
+function exportClientPDF(clientId) {
+    let data = getData();
+    let c = data.find(x => x.id === clientId);
+    if (!c) return;
+
+    let totalAmount = 0;
+    let paidAmount = 0;
+    let unpaidAmount = 0;
+
+    c.videos.forEach(v => {
+        let p = parseFloat(v.price) || 0;
+        totalAmount += p;
+        if (v.status === "Paid") {
+            paidAmount += p;
+        } else {
+            unpaidAmount += p;
+        }
+    });
+
+    let today = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    let pdfContent = `
+    <div style="font-family: 'Tahoma', sans-serif; padding: 25px; color: #333; direction: rtl; text-align: right; background: #fff;">
+        
+        <table style="width: 100%; border-collapse: collapse; border-bottom: 3px solid #4f46e5; padding-bottom: 15px; margin-bottom: 25px;">
+            <tr>
+                <td style="text-align: right; vertical-align: top; padding-bottom: 10px;">
+                    <h1 style="color: #4f46e5; margin: 0 0 6px 0; font-size: 24px;">🎬 تقرير كشف الحساب والمشاريع</h1>
+                    <p style="margin: 0; color: #555; font-size: 13px; font-weight: bold;">صادر من نظام ادارة المشاريع الخاص بـ كريم انيس</p>
+                </td>
+                <td style="text-align: left; vertical-align: top; padding-bottom: 10px; font-size: 13px; color: #444; line-height: 1.6;">
+                    <div style="direction: ltr; text-align: left;">
+                        <span style="direction: rtl; display: inline-block;"><b>التاريخ:</b> ${today}</span><br>
+                        <span style="direction: rtl; display: inline-block;"><b>العميل:</b> ${c.name}</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 25px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);">
+            <h3 style="margin: 0 0 8px 0; color: #1e293b; font-size: 15px;">📌 تفاصيل العميل والتعاقد:</h3>
+            <table style="width:100%; font-size: 14px;">
+                <tr>
+                    <td style="padding: 4px 0; width: 120px;"><b>اسم العميل:</b></td>
+                    <td style="padding: 4px 0; color:#4f46e5; font-weight:bold;">${c.name}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 4px 0;"><b>الباكدج المتفق عليها:</b></td>
+                    <td style="padding: 4px 0; color:#555;">${c.package || 'لا توجد باكدج محددة'}</td>
+                </tr>
+            </table>
+        </div>
+
+        <h3 style="color: #4f46e5; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; margin-bottom: 15px; font-size: 16px;">📊 بيان الفيديوهات وتواريخ التسليم:</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+            <thead>
+                <tr style="background: #4f46e5; color: #fff; text-align: right;">
+                    <th style="padding: 10px; border: 1px solid #cbd5e1;">اسم الفيديو / المشروع</th>
+                    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center;">حالة التنفيذ</th>
+                    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center;">الديدلاين Deadline</th>
+                    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center;">تاريخ التسليم الفعلي</th>
+                    <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center;">التكلفة</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${c.videos.length === 0 ? `<tr><td colspan="5" style="padding:15px; text-align:center; color:#888;">لا توجد فيديوهات مسجلة لهذا العميل حتى الآن.</td></tr>` : 
+                c.videos.map(v => `
+                    <tr style="background: ${v.status === 'Paid' ? '#f0fdf4' : '#fff'};">
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; font-size:13px;"><b>${v.title}</b> ${v.isArchived ? '<span style="color:#64748b; font-size:11px;">(مؤرشف)</span>' : ''}</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: ${v.status === 'Paid' ? '#16a34a' : '#475569'};">
+                            ${v.status}
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; color: #666;">${v.deadline || '-'}</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: #10b981;">${v.deliveryDate || '-'}</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: #0369a1; font-size:13px;">${v.price || 0}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: flex-start; gap: 15px; margin-bottom: 40px;">
+            <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 15px; min-width: 130px; background: #f1f5f9; text-align:center;">
+                <span style="font-size: 11px; color: #64748b; display: block; margin-bottom:4px;">الحساب الإجمالي</span>
+                <b style="font-size: 16px; color: #1e293b;">${totalAmount}</b>
+            </div>
+            <div style="border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 15px; min-width: 130px; background: #f0fdf4; text-align:center;">
+                <span style="font-size: 11px; color: #16a34a; display: block; margin-bottom:4px;">المدفوع الفعلي 💰</span>
+                <b style="font-size: 16px; color: #16a34a;">${paidAmount}</b>
+            </div>
+            <div style="border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 15px; min-width: 130px; background: #fef2f2; text-align:center;">
+                <span style="font-size: 11px; color: #dc2626; display: block; margin-bottom:4px;">المتبقي المستحق 💵</span>
+                <b style="font-size: 16px; color: #dc2626;">${unpaidAmount}</b>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px; text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 20px; color: #1e293b; font-size: 14px;">
+            <b style="font-size: 15px; color: #333;">شكراً لثقتكم و تعاملكم معنا</b> ❤️<br>
+            <div style="margin-top: 12px;">
+                <span style="font-weight: bold; color: #4f46e5; font-size: 15px; background: #f1f5f9; padding: 8px 20px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-block; letter-spacing: 0.5px;">📥 InstaPay : 01063288217</span>
+            </div>
+        </div>
+    </div>
+    `;
+
+    let opt = {
+        margin:       10,
+        filename:     `تقرير_مشاريع_${c.name}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(pdfContent).set(opt).save();
+}
+
+function render(){
+ let data=getData();
+ let targetValue = parseFloat(localStorage.getItem("financial_target")) || 0;
+
+ let totalClients=data.length;
+ let totalVideos=data.reduce((a,b)=>a+b.videos.length,0);
+ let completedVideos = data.reduce((acc, c) => acc + c.videos.filter(v => v.status === "Delivered" || v.status === "Paid").length, 0);
+ 
+ let totalUnpaid = 0;
+ let totalPaid = 0;
+
+ data.forEach(c => {
+     c.videos.forEach(v => {
+         let p = parseFloat(v.price) || 0;
+         if(v.status === "Paid") {
+             totalPaid += p;
+         } else {
+             totalUnpaid += p;
+         }
+     });
+ });
+
+ let percentage = targetValue > 0 ? Math.round((totalPaid / targetValue) * 100) : 0;
+
+ document.getElementById("stats").innerHTML=`
+ <div style="display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center; gap: 15px;">
+     <div>
+         <b>العملاء:</b> ${totalClients} &nbsp;|&nbsp;
+         <b>الفيديوهات الكلية:</b> ${totalVideos} &nbsp;|&nbsp;
+         <b>المنتهية:</b> ${completedVideos} ✨
+         <br><br style="content: ''; display: block; margin-top: 5px;">
+         <span style="color:#ef4444; font-weight:bold; font-size: 16px;">💵 المستحق (غير مدفوع): ${totalUnpaid}</span> &nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;
+         <span style="color:#10b981; font-weight:bold; font-size: 16px;">💰 المدفوع الفعلي (Paid): ${totalPaid}</span>
+     </div>
+     <div style="background:#f1f5f9; padding:10px; border-radius:10px; border:1px solid #cbd5e1; color:#334155;">
+         🎯 <b>الهدف المالي الشهري:</b> 
+         <input type="number" id="targetInput" value="${targetValue}" onchange="updateTarget(this.value)" style="width:90px; padding:4px; font-size:13px; margin:0 5px;">
+         &nbsp;|&nbsp; <b>نسبة الإنجاز:</b> <span style="font-weight:bold; color:#4f46e5;">${percentage}%</span>
+     </div>
+ </div>
+ `;
+ 
+ if(document.body.classList.contains('dark')) {
+     let tBox = document.querySelector("#stats div:last-child");
+     if(tBox) { tBox.style.background = "#2b2b2b"; tBox.style.color = "#eee"; tBox.style.borderColor = "#444"; }
+ }
+
+ let html="";
+
+ data.forEach(c=>{
+ if(c.isEditing) {
+     html += `
+     <div class="card client" style="border-right-color: #f59e0b;">
+       <div class="edit-form">
+         <h4>✏️ تعديل بيانات العميل</h4>
+         <input id="edit-name-${c.id}" value="${c.name}" placeholder="اسم العميل">
+         <input id="edit-pack-${c.id}" value="${c.package||""}" placeholder="الباكدج">
+         <div>
+             <button class="btn-primary" onclick="saveClientEdit(${c.id})">حفظ التغييرات</button>
+             <button onclick="toggleEditClient(${c.id}, false)">إلغاء</button>
+         </div>
+       </div>
+     </div>`;
+ } else {
+     let activeVideos = c.videos.filter(v => !v.isArchived);
+
+     html+=`
+     <div class="card client">
+       <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+           <div>
+               <h3 style="margin:0 0 5px 0;">${c.name}</h3>
+               <div class="small" style="margin-bottom:15px;">${c.package||"لا توجد باكدج محددة"}</div>
+           </div>
+           <button class="btn-pdf" onclick="exportClientPDF(${c.id})" style="font-size:12px; font-weight:bold; padding:6px 10px;">📄 تقرير PDF</button>
+       </div>
+
+       <div id="actions-${c.id}" style="margin-bottom:12px;">
+           <button onclick="showAddVideoForm(${c.id})">➕ فيديو جديد</button> 
+           <button onclick="toggleEditClient(${c.id}, true)">✏️ تعديل</button> 
+           <button class="btn-danger" onclick="showDeleteConfirm(${c.id})">🗑️ حذف العميل</button>
+       </div>
+
+       <div id="confirm-delete-${c.id}" style="display:none; background:#fee2e2; padding:10px; border-radius:8px; margin:5px 0;">
+           <span style="color:#b91c1c; font-size:13px; display:block; margin-bottom:5px;">هل أنت متأكد من حذف العميل وكل فيديوهاته؟</span>
+           <button class="btn-danger" onclick="deleteClient(${c.id})">نعم، احذف</button>
+           <button onclick="render()">تراجع</button>
+       </div>
+
+       <div id="video-form-${c.id}" class="inline-form" style="display:none;">
+          <input id="v-title-${c.id}" placeholder="اسم الفيديو" style="flex:2; min-width:120px;">
+          <input id="v-price-${c.id}" type="number" placeholder="السعر" style="flex:1; min-width:70px;">
+          <input id="v-deadline-${c.id}" type="date" style="flex:1.5; min-width:110px;">
+          <button class="btn-primary" onclick="inlineAddVideo(${c.id})">إضافة</button>
+       </div>
+
+       ${activeVideos.map(v=>{
+       const isDelivered = v.status === "Delivered" || v.status === "Paid";
+       const isPaid = v.status === "Paid";
+       
+       let deadlineClass = "";
+       if(v.status === "Not Started") {
+           deadlineClass = "video-waiting";
+       } else if(v.deadline && !isDelivered) {
+           let today = new Date();
+           today.setHours(0,0,0,0);
+           let dDate = new Date(v.deadline);
+           dDate.setHours(0,0,0,0);
+           let diffTime = dDate - today;
+           let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+           
+           if(diffDays <= 1) {
+               deadlineClass = "deadline-danger";
+           } else if(diffDays <= 3) {
+               deadlineClass = "deadline-warning";
+           }
+       }
+
+       return `
+       <div class="video ${deadlineClass}">
+         <div class="video-item">
+           <div class="video-info">
+             <input type="checkbox" onchange="toggleVideoComplete(${c.id},${v.id}, this.checked)" ${isDelivered?"checked":""} style="transform: scale(1.2); margin-left:8px; cursor:pointer;">
+             <b class="${isDelivered ? 'completed-text' : ''} ${isPaid ? 'paid-text' : ''}">${v.title}</b>
+             <span class="price-tag">${v.price || 0}</span>
+             <div class="small" style="margin-top:6px;">
+                Deadline: ${v.deadline||"-"} | 
+                <span style="color:#10b981; font-weight:bold;">تسليم:</span> 
+                <input type="date" value="${v.deliveryDate||''}" onchange="updateDeliveryDate(${c.id}, ${v.id}, this.value)" style="padding:2px; font-size:11px; font-family:Tahoma; border-radius:4px; border:1px solid #ccc;">
+             </div>
+           </div>
+           
+           <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+             <select onchange="updateStatus(${c.id},${v.id},this.value)" style="padding:4px; font-size:12px;">
+               <option value="Not Started" ${v.status=="Not Started"?"selected":""}>⏳ Not Started</option>
+               <option value="Editing" ${v.status=="Editing"?"selected":""}>Editing</option>
+               <option value="Review" ${v.status=="Review"?"selected":""}>Review</option>
+               <option value="Revision" ${v.status=="Revision"?"selected":""}>Revision</option>
+               <option value="Delivered" ${v.status=="Delivered"?"selected":""}>Delivered</option>
+               <option value="Paid" ${v.status=="Paid"?"selected":""} style="color:#10b981; font-weight:bold;">Paid 💰</option>
+             </select>
+             <div style="display:flex; gap:6px; margin-top:3px;">
+                ${isPaid ? `<button onclick="archiveVideo(${c.id}, ${v.id})" class="btn-success" style="padding:2px 6px; font-size:11px; border-radius:4px;">أرشفة 📦</button>` : ''}
+                <button onclick="deleteVideo(${c.id},${v.id})" style="padding:2px; font-size:11px; background:none; border:none; color:#ef4444; text-decoration:underline;">حذف</button>
+             </div>
+           </div>
+         </div>
+         
+         <details style="margin-top:8px; font-size:12px; border-top:1px dashed #ccc; padding-top:5px;">
+             <summary style="cursor:pointer; color:#4f46e5; font-weight:bold;">📝 الملاحظات والروابط (Assets & Feedback)</summary>
+             <div style="margin-top:5px; display:flex; flex-direction:column; gap:4px;">
+                 <input id="v-link-${v.id}" value="${v.link||''}" placeholder="رابط فولدر الـ Drive أو الـ Review" style="padding:4px; font-size:11px;">
+                 ${v.link ? `<a href="${v.link}" target="_blank" style="color:#10b981; margin:2px;">🔗 فتح الرابط</a>` : ''}
+                 <textarea id="v-notes-${v.id}" placeholder="اكتب التعديلات المطلوبة هنا..." style="padding:5px; font-family:Tahoma; font-size:11px; border-radius:6px; border:1px solid #ddd; resize:vertical; min-height:40px;">${v.notes||''}</textarea>
+                 <button onclick="saveVideoMeta(${c.id}, ${v.id})" class="btn-primary" style="padding:3px; font-size:11px; margin-top:2px;">حفظ الملاحظات 💾</button>
+             </div>
+         </details>
+       </div>
+       `}).join("")}
+     </div>`;
+ }
+ });
+
+ document.getElementById("clients").innerHTML=html;
+}
+
+function renderArchive() {
+    let data = getData();
+    let html = "";
+    let count = 0;
+
+    data.forEach(c => {
+        let archivedVideos = c.videos.filter(v => v.isArchived);
+        if(archivedVideos.length > 0) {
+            html += `<div style="border-bottom:1px solid #444; padding-bottom:10px; margin-bottom:10px;">
+                <h4 style="margin:0 0 5px 0; color:#4f46e5;">📌 عميل: ${c.name}</h4>`;
+            
+            archivedVideos.forEach(v => {
+                count++;
+                html += `
+                <div class="video" style="background:${document.body.classList.contains('dark') ? '#333' : '#f1f5f9'}; display:flex; justify-content:space-between; align-items:center; padding:8px; margin:4px 0;">
+                    <div>
+                        <b class="paid-text">📦 ${v.title}</b> 
+                        <span class="price-tag">${v.price || 0}</span>
+                        <div class="small">Deadline كان: ${v.deadline||'-'}</div>
+                    </div>
+                    <div>
+                        <button onclick="unarchiveVideo(${c.id}, ${v.id})" class="btn-primary" style="padding:4px 8px; font-size:12px;">إلغاء الأرشفة ↩️</button>
+                        <button onclick="deleteVideo(${c.id}, ${v.id})" class="btn-danger" style="padding:4px 8px; font-size:12px;">حذف نهائي</button>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+    });
+
+    if(count === 0) {
+        html = "<p style='text-align:center; color:#666;'>الأرشيف فارغ حالياً.</p>";
+    }
+    document.getElementById("archiveContent").innerHTML = html;
+}
+
+render();
+</script>
+</body>
+</html>
