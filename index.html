@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Editor CRM Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 body{font-family:Tahoma, Geneva, sans-serif;background:#f3f4f6;margin:0;padding:20px;transition: background 0.3s, color 0.3s;}
@@ -51,41 +54,236 @@ button:hover{background:#ddd}
 .dark button:hover {background:#444}
 .dark .btn-primary {background:#6366f1;}
 .dark .inline-form {background:#252525;}
+
+/* Login Mode overrides */
+body.login-mode {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: radial-gradient(circle at 10% 20%, rgb(31, 41, 55) 0%, rgb(17, 24, 39) 100.2%) !important;
+}
+
+/* Styling for Login screen */
+#loginContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.login-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 40px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    text-align: center;
+    color: #fff;
+    font-family: 'Outfit', 'Tahoma', sans-serif;
+    animation: loginFadeIn 0.8s ease-out;
+}
+@keyframes loginFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.login-card h2 {
+    margin-top: 0;
+    font-size: 28px;
+    background: linear-gradient(135deg, #a5b4fc, #818cf8, #6366f1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.login-card p {
+    color: #cbd5e1;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+.login-field {
+    position: relative;
+    margin-bottom: 20px;
+    text-align: right;
+}
+.login-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #a5b4fc;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.login-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    color: #fff !important;
+    font-size: 15px !important;
+    font-family: sans-serif !important;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    margin: 4px 0 !important;
+}
+.login-input:focus {
+    outline: none;
+    border-color: #818cf8 !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25) !important;
+}
+.login-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+    cursor: pointer;
+    margin-top: 10px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.4);
+}
+.login-btn:hover {
+    background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.5);
+}
+.login-btn:active {
+    transform: translateY(0);
+}
+.login-error {
+    color: #f87171;
+    font-size: 13px;
+    margin-top: 15px;
+    min-height: 20px;
+    font-weight: 500;
+}
 </style>
 </head>
 <body>
 
-<div style="display:flex;justify-content:space-between;align-items:center; flex-wrap: wrap; gap: 10px;">
-    <h1>🎬 K-Flow OS</h1>
-    <div>
-        <button onclick="toggleArchiveModal()" class="btn-primary" style="font-size:14px; font-weight: bold;">🗂️ فتح أرشيف الفيديوهات</button>
-        <button onclick="clearAllData()" class="btn-danger" style="font-size:14px; font-weight: bold;">🗑️ تصفير السيستم</button>
-        <button onclick="toggleDarkMode()" style="font-size:14px;">🌙 المظهر (Dark Mode)</button>
+<!-- Login Form -->
+<div id="loginContainer" style="display: none; direction: rtl;">
+    <div class="login-card">
+        <h2>🎬 K-Flow OS Pro</h2>
+        <p>نظام إدارة المشاريع وكشف حساب العملاء</p>
+        
+        <div class="login-field">
+            <label for="usernameInput">اسم المستخدم</label>
+            <input type="text" id="usernameInput" class="login-input" placeholder="أدخل اسم المستخدم" onkeydown="if(event.key === 'Enter') handleLogin()" autofocus autocomplete="username">
+        </div>
+        
+        <div class="login-field">
+            <label for="passwordInput">كلمة المرور</label>
+            <input type="password" id="passwordInput" class="login-input" placeholder="أدخل كلمة المرور" onkeydown="if(event.key === 'Enter') handleLogin()" autocomplete="current-password">
+        </div>
+        
+        <button onclick="handleLogin()" class="login-btn">تسجيل الدخول</button>
+        <div id="loginError" class="login-error"></div>
     </div>
 </div>
 
-<div class="card">
-    <h3>✨ إضافة عميل جديد</h3>
-    <input id="clientName" placeholder="اسم العميل">
-    <input id="package" placeholder="الباكدج / عدد الفيديوهات">
-    <button class="btn-primary" onclick="addClient()">إضافة عميل</button>
-</div>
-
-<div id="stats" class="card"></div>
-<div id="clients" class="grid"></div>
-
-<div id="archiveModal" class="card" style="display:none; position:fixed; top:10%; left:5%; right:5%; bottom:10%; z-index:1000; overflow-y:auto; border:2px solid #4f46e5; box-shadow:0 10px 25px rgba(0,0,0,0.3); background:#fff;">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ccc; padding-bottom:10px;">
-        <h2>📦 أرشيف الفيديوهات المؤرشفة والمنتهية</h2>
-        <button class="btn-danger" onclick="toggleArchiveModal()">إغلاق الأرشيف ✖️</button>
+<!-- CRM App Container -->
+<div id="appContainer" style="display: none; padding: 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center; flex-wrap: wrap; gap: 10px;">
+        <h1>🎬 K-Flow OS</h1>
+        <div>
+            <button onclick="toggleArchiveModal()" class="btn-primary" style="font-size:14px; font-weight: bold;">🗂️ فتح أرشيف الفيديوهات</button>
+            <button onclick="clearAllData()" class="btn-danger" style="font-size:14px; font-weight: bold;">🗑️ تصفير السيستم</button>
+            <button onclick="toggleDarkMode()" style="font-size:14px;">🌙 المظهر (Dark Mode)</button>
+            <button onclick="handleLogout()" class="btn-danger" style="font-size:14px; font-weight: bold; background: #dc2626;">🚪 خروج</button>
+        </div>
     </div>
-    <div id="archiveContent" style="margin-top:15px;"></div>
+    
+    <div class="card">
+        <h3>✨ إضافة عميل جديد</h3>
+        <input id="clientName" placeholder="اسم العميل">
+        <input id="package" placeholder="الباكدج / عدد الفيديوهات">
+        <button class="btn-primary" onclick="addClient()">إضافة عميل</button>
+    </div>
+    
+    <div id="stats" class="card"></div>
+    <div id="clients" class="grid"></div>
+    
+    <div id="archiveModal" class="card" style="display:none; position:fixed; top:10%; left:5%; right:5%; bottom:10%; z-index:1000; overflow-y:auto; border:2px solid #4f46e5; box-shadow:0 10px 25px rgba(0,0,0,0.3); background:#fff;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ccc; padding-bottom:10px;">
+            <h2>📦 أرشيف الفيديوهات المؤرشفة والمنتهية</h2>
+            <button class="btn-danger" onclick="toggleArchiveModal()">إغلاق الأرشيف ✖️</button>
+        </div>
+        <div id="archiveContent" style="margin-top:15px;"></div>
+    </div>
 </div>
 
 <script>
-if(localStorage.getItem("editorcrm_dark")==="true"){
-    document.body.classList.add("dark");
+// Authentication utility functions
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
 }
+
+async function handleLogin() {
+    const userVal = document.getElementById("usernameInput").value.trim();
+    const passVal = document.getElementById("passwordInput").value;
+    const errorEl = document.getElementById("loginError");
+    errorEl.textContent = "";
+
+    if (!userVal || !passVal) {
+        errorEl.textContent = "يرجى إدخال اسم المستخدم وكلمة المرور";
+        return;
+    }
+
+    const hashed = await sha256(passVal);
+    if (userVal === "KareemAnis" && hashed === "044c40f81156b3a19c69aa41c5270eeaebde7b4e5d1ae351c69c5ebbf8be5998") {
+        sessionStorage.setItem("crm_logged_in", "true");
+        showApp();
+    } else {
+        errorEl.textContent = "اسم المستخدم أو كلمة المرور غير صحيحة!";
+    }
+}
+
+function showApp() {
+    document.body.classList.remove("login-mode");
+    document.getElementById("loginContainer").style.display = "none";
+    document.getElementById("appContainer").style.display = "block";
+    if(localStorage.getItem("editorcrm_dark")==="true"){
+        document.body.classList.add("dark");
+    } else {
+        document.body.classList.remove("dark");
+    }
+    render();
+}
+
+function showLogin() {
+    document.body.classList.add("login-mode");
+    document.getElementById("appContainer").style.display = "none";
+    document.getElementById("loginContainer").style.display = "flex";
+}
+
+function handleLogout() {
+    sessionStorage.removeItem("crm_logged_in");
+    window.location.reload();
+}
+
+// Initial session check
+window.addEventListener('DOMContentLoaded', () => {
+    if (sessionStorage.getItem("crm_logged_in") === "true") {
+        showApp();
+    } else {
+        showLogin();
+    }
+});
 
 function getData(){
  return JSON.parse(localStorage.getItem("editorcrm")||"[]");
@@ -587,7 +785,6 @@ function renderArchive() {
     document.getElementById("archiveContent").innerHTML = html;
 }
 
-render();
 </script>
 </body>
 </html>
